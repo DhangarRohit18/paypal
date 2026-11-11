@@ -49,3 +49,4 @@ const PaymentTransactionSchema = new Schema<IPaymentTransactionDocument>(
 export const PaymentTransactionModel =
   mongoose.models.PaymentTransaction ||
   mongoose.model<IPaymentTransactionDocument>('PaymentTransaction', PaymentTransactionSchema);
+

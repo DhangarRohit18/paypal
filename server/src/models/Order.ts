@@ -30,3 +30,4 @@ const OrderSchema = new Schema<IOrderDocument>(
 
 export const OrderModel =
   mongoose.models.Order || mongoose.model<IOrderDocument>('Order', OrderSchema);
+

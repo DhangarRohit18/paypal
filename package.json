@@ -8,7 +8,11 @@
     "dev:server": "npm --prefix server run dev",
     "dev:client": "npm --prefix client run dev",
     "test:server": "npm --prefix server test",
-    "build:client": "npm --prefix client run build"
+    "test": "npm --prefix server test",
+    "build:server": "npm --prefix server run build",
+    "build:client": "npm --prefix client run build",
+    "build": "npm --prefix client run build && npm --prefix server run build",
+    "start": "npm --prefix server start"
   },
   "devDependencies": {
     "@playwright/test": "^1.65.0"

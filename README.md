@@ -114,10 +114,35 @@ npm run dev:client
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-### 4. Run Comprehensive Unit Tests
+### 4. Run Comprehensive Automated Tests
 ```bash
-npm run test:server
+# Vitest Integration Suite (77 tests across 9 suites)
+npm run test
+
+# Deterministic Unit Assertions (24 tests)
+npx tsx server/src/tests/runAllTests.ts
+
+# Supertest Auth & Rate Limiting (17 tests)
+npx tsx server/src/tests/runAuthSupertest.ts
 ```
+
+### 5. Production Build & Deployment
+
+#### Option A: Unified Local / Single-Server Build
+```bash
+# Build both frontend and backend
+npm run build
+
+# Start production server on port 5000 (serves API and compiled frontend assets)
+npm run start
+```
+
+#### Option B: Docker Compose Deployment
+```bash
+# Spin up production container alongside persistent MongoDB 7.0 database
+docker compose up --build -d
+```
+Access the complete application at `http://localhost:5000`.
 
 ---
 

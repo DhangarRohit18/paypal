@@ -3,6 +3,9 @@ import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import fs from 'fs';
 
 import { store } from './db/inMemoryStore.js';
 import { authRouter } from './routes/auth.js';
@@ -91,6 +94,26 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date().toISOString()
   });
 });
+
+// Serve client build in production / single-server deployment
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const possibleClientDistPaths = [
+  path.resolve(process.cwd(), 'client/dist'),
+  path.resolve(process.cwd(), '../client/dist'),
+  path.resolve(__dirname, '../../client/dist'),
+  path.resolve(__dirname, '../../../client/dist')
+];
+const clientDistPath = possibleClientDistPaths.find((p) => fs.existsSync(p));
+if (clientDistPath) {
+  app.use(express.static(clientDistPath));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api/')) {
+      return next();
+    }
+    res.sendFile(path.join(clientDistPath, 'index.html'));
+  });
+}
 
 // Global error handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

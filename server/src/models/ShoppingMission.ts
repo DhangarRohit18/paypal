@@ -28,3 +28,4 @@ const ShoppingMissionSchema = new Schema<IShoppingMissionDocument>(
 export const ShoppingMissionModel =
   mongoose.models.ShoppingMission ||
   mongoose.model<IShoppingMissionDocument>('ShoppingMission', ShoppingMissionSchema);
+

@@ -36,3 +36,4 @@ export const ProductSnapshotSchema = new Schema<IProductSnapshotDocument>(
 export const ProductSnapshotModel =
   mongoose.models.ProductSnapshot ||
   mongoose.model<IProductSnapshotDocument>('ProductSnapshot', ProductSnapshotSchema);
+

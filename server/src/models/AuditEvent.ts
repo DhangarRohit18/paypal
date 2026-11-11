@@ -41,3 +41,4 @@ const AuditEventSchema = new Schema<IAuditEventDocument>(
 export const AuditEventModel =
   mongoose.models.AuditEvent ||
   mongoose.model<IAuditEventDocument>('AuditEvent', AuditEventSchema);
+

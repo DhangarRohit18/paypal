@@ -26,3 +26,4 @@ const CoApprovalSchema = new Schema<ICoApprovalDocument>(
 export const CoApprovalModel =
   mongoose.models.CoApproval ||
   mongoose.model<ICoApprovalDocument>('CoApproval', CoApprovalSchema);
+
