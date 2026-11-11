@@ -39,19 +39,38 @@ An advanced agentic commerce platform where AI agents research, compare, bundle,
 - Hashes canonical sorted JSON fields with server secret (`HMAC_SECRET`).
 - Verifies cart version match: modifying cart after signing immediately invalidates the mandate, preventing cart tampering and price-spoofing attacks.
 
-### 5. P0-5: Real PayPal Sandbox Orders v2 Checkout
+### 5. P0-5: Official PayPal Orders v2 REST Checkout & Webhook Security
 - Integrates with official **PayPal Orders v2 REST API** (`/v2/checkout/orders` and `/v2/checkout/orders/{id}/capture`).
-- Idempotency key bound to the approval mandate ID.
+- Server-authoritative capture verification checklist:
+  - User ownership verification
+  - Invalidation check & 15-minute TTL enforcement
+  - Cart version and canonical HMAC-SHA256 fingerprint validation
+  - Real-time Spending Guard re-evaluation
+  - Order amount and currency verification against PayPal REST API
+- Idempotency key bound to the approval mandate ID (`PayPal-Request-Id`).
 - Single-use enforcement guarantees no duplicate payment capture or replay attacks.
+- Missing credentials cleanly produce `PAYPAL_NOT_CONFIGURED` without fake captures or orders.
+- Official Webhook Signature Verification (`POST /v1/notifications/verify-webhook-signature`) with durable deduplication and idempotency for `PAYMENT.CAPTURE.COMPLETED`, `PAYMENT.CAPTURE.DENIED`, `PAYMENT.CAPTURE.REFUNDED`, and `PAYMENT.CAPTURE.REVERSED`.
+- See setup guide in `docs/paypal-webhook-setup.md`.
 
-### 6. P0-6: AEGIS Security Center & Red Team Mode
-- **Emergency Kill Switch**: One-click immediate halt of all purchasing, passport generation, and payment orders.
-- **Live Red Team Attack Simulator**: Test 5 real adversarial attack vectors (poisoned product prompt injection, budget limit bypass, post-approval cart tampering, expired mandate replay, forged amount spoofing) and witness real-time AEGIS defense intercepts.
-- **Immutable Security Events Ledger**: Comprehensive audit trail of all security actions.
+### 6. P0-6: AEGIS Security Center & 7-Vector Red Team Arena
+- **Emergency Kill Switch**: Immediate halt of all purchasing, passport generation, and payment orders.
+- **Live Red Team Attack Arena**: Run 7 real adversarial attack scenarios:
+  1. Poisoned product prompt injection (`POISONED_PRODUCT`)
+  2. Budget limit bypass (`BUDGET_BYPASS`)
+  3. Forged frontend price spoof (`FORGED_AMOUNT`)
+  4. Post-approval cart mutation (`CART_TAMPER`)
+  5. Expired approval mandate replay (`EXPIRED_MANDATE`)
+  6. Duplicate payment capture replay (`REPLAY_CAPTURE`)
+  7. Operational lockdown under kill switch (`KILL_SWITCH`)
+- **Immutable Security Events Ledger**: Comprehensive audit trail of all security intercepts.
 
-### 7. Post-Purchase Resolve Agent
-- Live tracking of 30-day merchant return protection windows and 12-to-36-month hardware warranties.
-- Generates official return RMA manifests and manufacturer repair claim guidance.
+### 7. Signature USPs
+- **Evidence-Linked Shopping**: Every recommendation references actual product catalogue specs; unsupported claims are labeled unknown.
+- **Second Opinion & Regret Shield**: Recommends cheaper sufficient alternatives and highlights unneeded premium specs or weak return policies.
+- **Co-Approver Passport**: Generates 30-day read-only shareable review links with designated secondary authorization before payment.
+- **Agent Flight Recorder**: Ordered 8-step timeline tracing intent extraction, discovery, FitCheck, FairPrice, Spending Guard, passport compilation, mandate signing, and PayPal execution.
+- **Post-Purchase Resolve Agent**: Live tracking of 30-day merchant return protection windows and 12-to-36-month hardware warranties.
 
 ---
 

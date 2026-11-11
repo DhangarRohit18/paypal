@@ -15,7 +15,9 @@ import {
   IResolutionRequest,
   IShoppingAgent,
   IMemoryProfile,
-  IConversation
+  IConversation,
+  IWebhookEvent,
+  ICoApproverShare
 } from '../../../shared/types.js';
 import { SAMPLE_PRODUCTS, SAMPLE_MERCHANTS } from '../seed/sampleCatalogue.js';
 
@@ -41,6 +43,8 @@ export class InMemoryStore {
   products: IProduct[] = [...SAMPLE_PRODUCTS];
   merchants: IMerchant[] = [...SAMPLE_MERCHANTS];
   paypalTokenCache: { token: string; expiresAt: number } | null = null;
+  webhookEvents: Map<string, IWebhookEvent> = new Map(); // key: eventId
+  coApproverShares: Map<string, ICoApproverShare> = new Map(); // key: token
 
   constructor() {
     this.seedDefaultUsers();

@@ -80,6 +80,20 @@ export const api = {
     }),
   getMandate: (passportId: string) => request<{ mandate: any }>(`/passport/${passportId}/mandate`),
   getExportPassportUrl: (passportId: string, format = 'html') => `/api/passports/${passportId}/export?format=${format}`,
+  createCoApproverShare: (passportId: string) =>
+    request<{ success: boolean; shareUrl: string; token: string; expiresAt: string }>(
+      `/passport/${passportId}/share`,
+      { method: 'POST' }
+    ),
+  getPassportByShareToken: (token: string) =>
+    request<{ success: boolean; passport: any; creatorName?: string; isExpired?: boolean; isApproved?: boolean }>(
+      `/passport/share/${token}`
+    ),
+  approvePassportByShareToken: (token: string, approverName: string) =>
+    request<{ success: boolean; passport: any; message: string }>(
+      `/passport/share/${token}/approve`,
+      { method: 'POST', body: JSON.stringify({ approverName }) }
+    ),
 
   // Security & Spending Policy
   getSecurityPolicies: () => request<{ success: boolean; policy: any }>('/security/policies'),
@@ -177,6 +191,44 @@ export const api = {
     request<{ success: boolean; conversation: any }>(`/shopping/conversations/${id}`),
   deleteShoppingConversation: (id: string) =>
     request<{ success: boolean }>(`/shopping/conversations/${id}`, { method: 'DELETE' }),
+  getConversations: () =>
+    request<{ success: boolean; conversations: any[] }>('/shopping/conversations'),
+  getConversation: (id: string) =>
+    request<{ success: boolean; conversation: any }>(`/shopping/conversations/${id}`),
+  deleteConversation: (id: string) =>
+    request<{ success: boolean }>(`/shopping/conversations/${id}`, { method: 'DELETE' }),
+  chatStream: async (
+    payload: { message: string; conversationId?: string; updatedRequirements?: any },
+    onChunk: (chunk: string) => void
+  ) => {
+    const response = await fetch(`${API_BASE}/shopping/chat?stream=true`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'text/event-stream'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || `HTTP ${response.status}`);
+    }
+
+    if (!response.body) {
+      throw new Error('ReadableStream not supported on response.');
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const text = decoder.decode(value, { stream: true });
+      onChunk(text);
+    }
+  },
   updateShoppingRequirements: (id: string, reqs: any) =>
     request<{ success: boolean; understoodRequirements: any }>(`/shopping/conversations/${id}/requirements`, {
       method: 'PATCH',

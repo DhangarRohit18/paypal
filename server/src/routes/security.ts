@@ -209,6 +209,48 @@ router.post('/red-team/simulate', (req: AuthRequest, res) => {
       break;
     }
 
+    case 'REPLAY_CAPTURE': {
+      title = 'Duplicate Payment Capture Replay Attack';
+      description = 'Simulates an adversary re-submitting an already consumed single-use cryptographic authorization mandate.';
+      attackPayload = 'Re-submitting mandate: appr-consumed-4412 for second payment capture';
+      caughtByLayer = 'AEGIS_PAYMENT_FINGERPRINT';
+      remedy = 'Mandate is permanently marked as used. Duplicate capture was rejected by atomic single-use state verification.';
+      const event: ISecurityEvent = {
+        id: uuidv4(),
+        timestamp: new Date().toISOString(),
+        eventType: 'REPLAY_ATTACK_PREVENTED',
+        source: 'replay_attempt',
+        severity: 'CRITICAL',
+        payloadExcerpt: attackPayload,
+        actionTaken: 'BLOCKED',
+        defenceLayer: 'AEGIS_PAYMENT_FINGERPRINT',
+        remedySuggested: remedy
+      };
+      store.addSecurityEvent(event);
+      break;
+    }
+
+    case 'KILL_SWITCH': {
+      title = 'Operational Lockdown Under Emergency Kill Switch';
+      description = 'Simulates an attempted commerce transaction while the master AEGIS Emergency Kill Switch is engaged.';
+      attackPayload = 'Attempted: POST /api/payments/create-order while killSwitchActive: true';
+      caughtByLayer = 'AEGIS_KILL_SWITCH';
+      remedy = 'Emergency kill switch unconditionally halted all purchasing, passport generation, and payment orders.';
+      const event: ISecurityEvent = {
+        id: uuidv4(),
+        timestamp: new Date().toISOString(),
+        eventType: 'KILL_SWITCH_BLOCKED_ACTION',
+        source: 'user_input',
+        severity: 'CRITICAL',
+        payloadExcerpt: attackPayload,
+        actionTaken: 'BLOCKED',
+        defenceLayer: 'AEGIS_KILL_SWITCH',
+        remedySuggested: remedy
+      };
+      store.addSecurityEvent(event);
+      break;
+    }
+
     default:
       res.status(400).json({ error: 'UNKNOWN_SCENARIO' });
       return;

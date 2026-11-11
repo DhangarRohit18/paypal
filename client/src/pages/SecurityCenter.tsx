@@ -129,6 +129,16 @@ export const SecurityCenter: React.FC = () => {
       id: 'FORGED_AMOUNT',
       name: 'Forged Frontend Price Spoof',
       desc: 'Submits a spoofed $1.00 HTTP price payload against the server-authoritative catalog price.'
+    },
+    {
+      id: 'REPLAY_CAPTURE',
+      name: 'Duplicate Payment Capture Replay Attack',
+      desc: 'Simulates re-submitting an already used single-use mandate for a second payment capture.'
+    },
+    {
+      id: 'KILL_SWITCH',
+      name: 'Operational Lockdown Under Kill Switch',
+      desc: 'Simulates executing purchasing actions while the master AEGIS Emergency Kill Switch is engaged.'
     }
   ];
 

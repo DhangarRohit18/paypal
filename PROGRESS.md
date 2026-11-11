@@ -15,8 +15,8 @@
 | **Phase 2** | Authentication, Dashboard, Navigation, Settings | ✅ COMPLETE | 17/17 Supertest tests passing, Playwright E2E passing, Helmet + Rate limiting active |
 | **Phase 3** | Catalogue Discovery, Intent Agent, Workspace Chat | ✅ COMPLETE | 34/34 tests passing (Vitest + Supertest), Playwright E2E passing, SSE streaming live |
 | **Phase 4** | Cart Service, Spending Guard, Purchase Passport | ✅ COMPLETE | 52/52 Vitest passing, 3/3 Playwright passing, integer cents math, HMAC-SHA256 mandate, auto-invalidation cascade |
-| **Phase 5** | PayPal Sandbox Orders v2 Checkout & Resolution | ⏳ READY | — |
-| **Phases 6-10** | Bundle Optimizer, AEGIS Red Team, Full Verification | ⏳ READY | — |
+| **Phase 5** | PayPal Hardening, Orders v2 Checkout & Webhook Security | ✅ COMPLETE | 65/65 Vitest passing (8 suites), 24/24 unit assertions, 17/17 Supertest, zero fake captures on missing credentials, official webhook verification, Co-Approver share links, Agent Flight Recorder |
+| **Phases 6-10** | Bundle Optimizer, AEGIS Red Team, Full Verification | ✅ COMPLETE | 7-scenario Red Team Arena, 3-plan Bundle Optimizer, Second Opinion Regret Shield |
 
 ---
 
@@ -252,6 +252,79 @@
   - `tests/phase3-workspace.spec.ts` (passed)
   - `tests/phase4-cart-passport.spec.ts` (passed: Add product -> generate passport -> approve mandate -> modify cart -> passport shows invalidated)
 - **TypeScript Builds**: Both frontend (`tsc && vite build`) and backend (`tsc`) compile with 0 errors.
+
+---
+
+## Phase 5 Delivery Details: Recovery, Payment Hardening & PayPal-Ready Upgrade
+
+### 1. Payment Security Hardening (Phase 5A)
+- **Elimination of Fake Captures**: Removed any checkout code path that simulated successful payment when credentials were absent.
+- **Strict Error Code**: Missing `PAYPAL_CLIENT_ID` or `PAYPAL_CLIENT_SECRET` immediately produces `PAYPAL_NOT_CONFIGURED` on both `/api/payments/create-order` and `/api/payments/capture-order`. Zero fake capture IDs, zero fake completed orders.
+- **Server-Authoritative Capture Verification Checklist**:
+  1. Load stored mandate from `store.approvals`.
+  2. Verify user ownership: `mandate.userId === req.userId`.
+  3. Replay protection: verify mandate is not already used (`!mandate.usedAt`).
+  4. 15-minute TTL enforcement: reject expired mandates (`new Date() > new Date(mandate.expiresAt)`).
+  5. Load associated Purchase Passport and verify ownership & un-invalidated status.
+  6. Co-Approval gate: verify secondary approval if order exceeds high-ticket threshold.
+  7. Validate live cart version and cryptographic HMAC-SHA256 fingerprint (`verifyMandate`).
+  8. Re-run Spending Guard on live stored cart.
+  9. Remote PayPal verification: call `getPayPalOrder(paypalOrderId)` directly from PayPal Orders v2 REST API to verify currency and ensure order amount matches mandate total within 0.01 margin.
+  10. Atomic lock: mark mandate as in-flight to prevent concurrent duplicate capture attempts.
+  11. Backend capture via `capturePayPalOrder(paypalOrderId, idempotencyKey)` with `PayPal-Request-Id`.
+  12. Verify actual PayPal response status is `COMPLETED`.
+  13. Mark mandate permanently as `usedAt: now`, update passport to `COMPLETED`, persist durable `IOrder` record, and clear live cart.
+
+### 2. Official PayPal Orders v2 REST Integration (Phase 5B)
+- **OAuth Access Token Caching**: In-memory cache with proactive 60-second refresh before expiration.
+- **Orders API Create (`POST /v2/checkout/orders`)**: Itemized breakdown, custom_id = passportId, reference_id = approvalId, dynamic return/cancel URLs.
+- **Idempotency Protection**: Bound to approvalId (`PayPal-Request-Id`).
+- **Safe Logging**: `PayPal-Debug-Id` header logged for API diagnostics; `PAYPAL_CLIENT_SECRET` is never logged or exposed.
+- **Network Timeouts**: 10-second `AbortSignal.timeout(10000)` on all PayPal fetch requests.
+
+### 3. Webhook Security & Event Deduplication (Phase 5C)
+- **Official Webhook Verification (`POST /v1/notifications/verify-webhook-signature`)**: Verifies transmission signatures (`paypal-auth-algo`, `paypal-cert-url`, `paypal-transmission-id`, `paypal-transmission-sig`, `paypal-transmission-time`).
+- **Supported Events**:
+  - `PAYMENT.CAPTURE.COMPLETED`: Updates order status to `PROCESSING`
+  - `PAYMENT.CAPTURE.DENIED`: Marks order status as `CANCELLED`
+  - `PAYMENT.CAPTURE.REFUNDED`: Marks order status as `REFUNDED`
+  - `PAYMENT.CAPTURE.REVERSED`: Marks order status as `REFUNDED` / `DISPUTED`
+- **Durable Webhook Storage & Deduplication**: Unique event ID stored in `store.webhookEvents` Map and Mongoose `WebhookEventModel`. Duplicate events return `duplicate_ignored` idempotently.
+- **Setup Guide**: Created `docs/paypal-webhook-setup.md` detailing Cloudflare Tunnel / ngrok local exposure and PayPal Developer Webhook registration.
+
+### 4. Purchase Passport Enhancement (Phase 5D)
+- **Boarding Pass & Certificate UI**: Displays Passport ID, Cart Fingerprint (HMAC-SHA256), exact product snapshots, merchant trust scores, and authoritative totals.
+- **Auto-Invalidation Cascade**: Any cart mutation increments version and invalidates existing passports with explicit reason banner.
+- **Export Formats**: Printable HTML audit certificate and raw JSON export via `GET /api/passports/:id/export?format=html|json`.
+
+### 5. Signature USP Integration (Phase 5E)
+- **A. Evidence-Linked Shopping**: Recommendations reference verified catalogue fields; unsupported claims tagged unknown.
+- **B. BUYWISE Second Opinion & Regret Shield**: Recommends cheaper sufficient alternatives in same category, checks unnecessary premium specs, and flags return windows under 30 days.
+- **C. Co-Approver Passport**: Generates expiring (30-day) read-only review share links (`/passport?reviewToken=...`) and allows secondary authorization without exposing private accounts.
+- **D. Agent Flight Recorder**: Ordered 8-step timeline tracing intent parsing, discovery, FitCheck, FairPrice, Spending Guard, passport compilation, mandate signing, and PayPal checkout.
+- **E. AEGIS Red Team Arena**: 7 real runnable attack scenarios (poisoned product prompt injection, budget bypass, forged checkout amount, cart tampering, expired approval, replay capture, and kill switch lockdown).
+
+### 6. Premium UI Refinement (Phase 5F)
+- **Design Tokens**: Standardized on Navy `#0B1020`, Primary Blue `#246BFD`, Violet `#7657FF`, Status Success `#18A873`, Warning `#E9A23B`, Danger `#E05252`.
+- **Checkout Page**: Honest sandbox environment status, clear `PAYPAL_NOT_CONFIGURED` alert when credentials missing, official PayPal authorization button.
+- **Landing Page**: Added live 4-stage interactive workflow simulator demonstrating actual product states.
+
+### 7. Automated Verification Test Results (Phase 5G)
+- **Vitest Suites**: **65/65 tests passing across 8 suites** (100% pass rate):
+  - `src/tests/paypalHardening.test.ts` (13/13 passed)
+  - `src/tests/auth.test.ts` (7/7 passed)
+  - `src/tests/shoppingApi.test.ts` (9/9 passed)
+  - `src/tests/cartPassportSupertest.test.ts` (9/9 passed)
+  - `src/tests/cartSpendingPassport.test.ts` (9/9 passed)
+  - `src/tests/discovery.test.ts` (8/8 passed)
+  - `src/tests/intent.test.ts` (7/7 passed)
+  - `src/tests/securityContainment.test.ts` (3/3 passed)
+- **Deterministic Assertion Suite (`runAllTests.ts`)**: **24/24 passing**
+- **Auth Supertest Suite (`runAuthSupertest.ts`)**: **17/17 passing**
+- **TypeScript & Production Builds**:
+  - Backend `npm --prefix server run build`: **0 errors**
+  - Frontend `npm --prefix client run build`: **0 errors** (built in 11.47s)
+
 
 
 

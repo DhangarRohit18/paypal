@@ -1,7 +1,7 @@
 import React from 'react';
 
 export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
-  variant?: 'neutral' | 'brand' | 'success' | 'warning' | 'danger' | 'sample' | 'outline';
+  variant?: 'neutral' | 'brand' | 'success' | 'warning' | 'danger' | 'sample' | 'outline' | 'blue' | 'purple';
   size?: 'sm' | 'md';
   dot?: boolean;
 }
@@ -34,6 +34,10 @@ export const Badge: React.FC<BadgeProps> = ({
       'bg-transparent text-text-muted border border-border',
     sample:
       'bg-brand-violet/10 text-brand-violet border border-brand-violet/25 font-mono font-medium',
+    blue:
+      'bg-brand-blue/10 text-brand-blue border border-brand-blue/20 font-semibold',
+    purple:
+      'bg-brand-violet/10 text-brand-violet border border-brand-violet/25 font-mono font-medium',
   }[variant];
 
   const dotColors = {
@@ -44,6 +48,8 @@ export const Badge: React.FC<BadgeProps> = ({
     danger: 'bg-status-danger',
     outline: 'bg-text-muted',
     sample: 'bg-brand-violet',
+    blue: 'bg-brand-blue',
+    purple: 'bg-brand-violet',
   }[variant];
 
   return (

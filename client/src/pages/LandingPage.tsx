@@ -29,6 +29,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../co
 import { Badge } from '../components/ui/Badge.js';
 
 export const LandingPage: React.FC = () => {
+  const [activeWorkflowStep, setActiveWorkflowStep] = React.useState<number>(1);
   return (
     <div className="space-y-24 pb-20 overflow-hidden">
       {/* 1. HERO SECTION WITH SIGNATURE ACCENT & FLOATING MOCKUPS */}
@@ -285,63 +286,179 @@ export const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* 2. THE 4-STAGE PIPELINE: VERTICAL SLICE ARCHITECTURE */}
+      {/* 2. THE 4-STAGE PIPELINE: INTERACTIVE PRODUCT WORKFLOW */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
         <div className="text-center max-w-2xl mx-auto">
           <Badge variant="brand" size="md">
-            THE 4-STAGE PIPELINE
+            LIVE INTERACTIVE WORKFLOW
           </Badge>
           <h2 className="text-3xl font-extrabold text-text tracking-tight mt-3">
-            From Natural Language Intent to Confirmed PayPal Order
+            From Natural Language Intent to Confirmed PayPal Sandbox Order
           </h2>
           <p className="text-sm text-text-muted mt-2">
-            Every transition is enforced by AEGIS permission gateways and cryptographic HMAC-SHA256 signature mandates.
+            Click each step below to inspect how PAYPAL AEGIS validates, locks, and executes every transaction state.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          {/* Step 1 */}
-          <Card hoverable className="p-6 space-y-3">
-            <div className="w-10 h-10 rounded-xl bg-brand-blue/10 text-brand-blue font-black flex items-center justify-center text-sm font-mono border border-brand-blue/20">
-              01
-            </div>
-            <h3 className="font-bold text-text text-base">Intent & Mission Ingestion</h3>
-            <p className="text-xs text-text-muted leading-relaxed">
-              Describe your objective in plain English (e.g. <em>"AI development workstation under $1,000"</em>). The Intent Agent extracts structured criteria, budget envelopes, and maintains an editable requirements panel.
-            </p>
-          </Card>
+        {/* Step Selector Tabs */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-4xl mx-auto">
+          {[
+            { step: 1, title: '01. Intent Ingestion', desc: 'Natural Query → Specs' },
+            { step: 2, title: '02. Discovery & FitCheck', desc: 'Hardware Matrix Audit' },
+            { step: 3, title: '03. Purchase Passport', desc: 'HMAC-SHA256 Mandate' },
+            { step: 4, title: '04. PayPal Sandbox', desc: 'Server-Side Capture' }
+          ].map((item) => (
+            <button
+              key={item.step}
+              onClick={() => setActiveWorkflowStep(item.step)}
+              className={`p-4 rounded-2xl text-left border transition-all ${
+                activeWorkflowStep === item.step
+                  ? 'bg-surface border-brand-blue shadow-soft-lg ring-2 ring-brand-blue/20'
+                  : 'bg-bg-subtle border-border hover:border-border-strong opacity-80'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-1">
+                <span
+                  className={`text-xs font-mono font-bold ${
+                    activeWorkflowStep === item.step ? 'text-brand-blue' : 'text-text-muted'
+                  }`}
+                >
+                  {item.title}
+                </span>
+                {activeWorkflowStep === item.step && (
+                  <span className="w-2 h-2 rounded-full bg-brand-blue animate-pulse" />
+                )}
+              </div>
+              <span className="text-[11px] text-text-muted block font-sans">{item.desc}</span>
+            </button>
+          ))}
+        </div>
 
-          {/* Step 2 */}
-          <Card hoverable className="p-6 space-y-3">
-            <div className="w-10 h-10 rounded-xl bg-brand-violet/10 text-brand-violet font-black flex items-center justify-center text-sm font-mono border border-brand-violet/20">
-              02
-            </div>
-            <h3 className="font-bold text-text text-base">Deterministic Discovery & FitCheck</h3>
-            <p className="text-xs text-text-muted leading-relaxed">
-              Backend algorithms match specifications, verify port compatibility, evaluate merchant warranty policies, and compute totals in integer cents with zero hallucinated prices.
-            </p>
-          </Card>
+        {/* Interactive Step Preview Console */}
+        <div className="max-w-4xl mx-auto">
+          <Card className="p-6 sm:p-8 bg-surface border-border shadow-soft-xl overflow-hidden">
+            {activeWorkflowStep === 1 && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between border-b border-border pb-3">
+                  <div className="flex items-center space-x-2">
+                    <Bot className="w-5 h-5 text-brand-blue" />
+                    <span className="font-bold text-sm text-text">Step 1: BUYWISE Intent Normalization</span>
+                  </div>
+                  <Badge variant="blue" size="sm">Rule-Based / OpenAI / Gemini</Badge>
+                </div>
+                <div className="bg-bg-subtle p-3.5 rounded-xl border border-border font-mono text-xs">
+                  <span className="text-text-muted block text-[10px] uppercase font-bold mb-1">Raw User Input:</span>
+                  <p className="text-text font-semibold">"Need a high-refresh monitor and wireless mouse for competitive gaming under $500 total."</p>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-mono">
+                  <div className="p-3 bg-bg-subtle rounded-xl border border-border">
+                    <span className="text-text-muted text-[10px] block uppercase font-bold">Categories Extracted</span>
+                    <span className="text-brand-blue font-bold">['monitors', 'mice']</span>
+                  </div>
+                  <div className="p-3 bg-bg-subtle rounded-xl border border-border">
+                    <span className="text-text-muted text-[10px] block uppercase font-bold">Budget Ceiling</span>
+                    <span className="text-status-success font-bold">$500.00 USD</span>
+                  </div>
+                  <div className="p-3 bg-bg-subtle rounded-xl border border-border">
+                    <span className="text-text-muted text-[10px] block uppercase font-bold">Key Specs</span>
+                    <span className="text-brand-violet font-bold">refreshRate ≥ 144Hz</span>
+                  </div>
+                </div>
+              </div>
+            )}
 
-          {/* Step 3 */}
-          <Card hoverable className="p-6 space-y-3">
-            <div className="w-10 h-10 rounded-xl bg-status-success-bg text-status-success-text font-black flex items-center justify-center text-sm font-mono border border-status-success-border">
-              03
-            </div>
-            <h3 className="font-bold text-text text-base">Purchase Passport & Signed Mandate</h3>
-            <p className="text-xs text-text-muted leading-relaxed">
-              Before paying, a tamper-proof <strong>Purchase Passport</strong> is generated with an <strong>HMAC-SHA256 signature mandate</strong>. Any subsequent cart change invalidates approval immediately.
-            </p>
-          </Card>
+            {activeWorkflowStep === 2 && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between border-b border-border pb-3">
+                  <div className="flex items-center space-x-2">
+                    <Cpu className="w-5 h-5 text-status-success" />
+                    <span className="font-bold text-sm text-text">Step 2: Deterministic Discovery & FitCheck</span>
+                  </div>
+                  <Badge variant="success" size="sm">Zero Hallucinations</Badge>
+                </div>
+                <p className="text-xs text-text-muted leading-relaxed">
+                  The discovery engine queries catalog records directly without LLM price guessing. FitCheck analyzes USB-C PD wattage, DisplayPort alt-mode, and return policies.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div className="p-3.5 bg-bg-subtle rounded-xl border border-border space-y-1">
+                    <span className="font-bold text-text block">PRISM 27" 4K Monitor</span>
+                    <div className="flex items-center space-x-2 font-mono text-[11px] text-text-muted">
+                      <span>$379.00 USD</span>
+                      <span>•</span>
+                      <span className="text-status-success font-bold">FairPrice: Good Deal</span>
+                    </div>
+                  </div>
+                  <div className="p-3.5 bg-bg-subtle rounded-xl border border-border space-y-1">
+                    <span className="font-bold text-text block">Aerolite Pro Wireless Mouse</span>
+                    <div className="flex items-center space-x-2 font-mono text-[11px] text-text-muted">
+                      <span>$49.99 USD</span>
+                      <span>•</span>
+                      <span className="text-status-success font-bold">FitCheck: USB-C Pass</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
-          {/* Step 4 */}
-          <Card hoverable className="p-6 space-y-3">
-            <div className="w-10 h-10 rounded-xl bg-status-warning-bg text-status-warning-text font-black flex items-center justify-center text-sm font-mono border border-status-warning-border">
-              04
-            </div>
-            <h3 className="font-bold text-text text-base">PayPal Sandbox Checkout</h3>
-            <p className="text-xs text-text-muted leading-relaxed">
-              Server-side PayPal Orders v2 REST API creates and captures the payment. Zero client-side amounts are trusted. Order confirmation renders only after verified capture.
-            </p>
+            {activeWorkflowStep === 3 && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between border-b border-border pb-3">
+                  <div className="flex items-center space-x-2">
+                    <FileCheck2 className="w-5 h-5 text-brand-violet" />
+                    <span className="font-bold text-sm text-text">Step 3: Purchase Passport & Signed Mandate</span>
+                  </div>
+                  <Badge variant="purple" size="sm">15-Min Single-Use TTL</Badge>
+                </div>
+                <div className="p-4 bg-bg-subtle rounded-xl border border-border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 font-mono text-xs">
+                  <div>
+                    <span className="text-text-muted text-[10px] uppercase font-bold block">Canonical Order Fingerprint</span>
+                    <span className="text-status-success font-bold break-all">
+                      HMAC-SHA256: d8e29a...f710c4 (Locked to Cart v2)
+                    </span>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <span className="text-text-muted text-[10px] uppercase font-bold block">Authorized Total</span>
+                    <span className="text-lg font-black text-text">$463.31 USD</span>
+                  </div>
+                </div>
+                <p className="text-[11px] text-text-muted leading-relaxed font-sans">
+                  Any attempt to modify cart quantities, add items, or inject prices after this step instantly voids the mandate and triggers the AEGIS tamper defense layer.
+                </p>
+              </div>
+            )}
+
+            {activeWorkflowStep === 4 && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between border-b border-border pb-3">
+                  <div className="flex items-center space-x-2">
+                    <CreditCard className="w-5 h-5 text-brand-blue" />
+                    <span className="font-bold text-sm text-text">Step 4: PayPal Orders v2 REST API Execution</span>
+                  </div>
+                  <Badge variant="success" size="sm">COMPLETED (Sandbox)</Badge>
+                </div>
+                <div className="bg-bg-subtle p-4 rounded-xl border border-border font-mono text-xs space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-text-muted">PayPal Order ID:</span>
+                    <code className="text-text font-bold">5XR8920194827104</code>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-text-muted">Server-Side Capture:</span>
+                    <code className="text-status-success font-bold">CAP-8920194827104 (COMPLETED)</code>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-text-muted">Durable Order Ledger:</span>
+                    <code className="text-brand-blue font-bold">ORD-2026-X82A</code>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between pt-2 text-xs font-mono">
+                  <span className="text-text-muted">30-day merchant return protection active.</span>
+                  <Link to="/workspace" className="text-brand-blue font-bold hover:underline flex items-center space-x-1">
+                    <span>Try it in AI Workspace</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
+              </div>
+            )}
           </Card>
         </div>
       </section>

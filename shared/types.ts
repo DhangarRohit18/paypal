@@ -331,9 +331,59 @@ export interface IPurchasePassport {
   invalidationReason?: string;
   coApproverToken?: string;
   coApproverEmail?: string;
+  coApproverExpiresAt?: string;
   coApprovedBy?: string;
+  coApprovedAt?: string;
+  paypalOrderId?: string;
+  paypalCaptureId?: string;
+  secondOpinion?: ISecondOpinionReport;
+  flightRecorderEvents?: IFlightRecorderEvent[];
   createdAt: string;
   expiresAt: string;
+}
+
+export interface IFlightRecorderEvent {
+  stepIndex: number;
+  phase:
+    | 'INTENT'
+    | 'DISCOVERY'
+    | 'FIT_CHECK'
+    | 'FAIR_PRICE'
+    | 'SPENDING_GUARD'
+    | 'PASSPORT'
+    | 'MANDATE'
+    | 'PAYPAL_ORDER'
+    | 'PAYPAL_CAPTURE';
+  title: string;
+  description: string;
+  timestamp: string;
+  status: 'COMPLETED' | 'IN_PROGRESS' | 'PENDING' | 'INTERCEPTED' | 'FAILED';
+  metadata?: Record<string, any>;
+}
+
+export interface ICoApproverShare {
+  token: string;
+  passportId: string;
+  userId: string;
+  creatorName: string;
+  expiresAt: string;
+  createdAt: string;
+  approved: boolean;
+  approvedAt?: string;
+  approvedBy?: string;
+}
+
+export interface IWebhookEvent {
+  eventId: string;
+  eventType: string;
+  summary?: string;
+  resourceType?: string;
+  resourceId?: string;
+  status: 'PROCESSED' | 'IGNORED' | 'FAILED' | 'DUPLICATE';
+  verified: boolean;
+  receivedAt: string;
+  processedAt?: string;
+  rawPayloadSnippet?: string;
 }
 
 export interface IApprovalMandate {

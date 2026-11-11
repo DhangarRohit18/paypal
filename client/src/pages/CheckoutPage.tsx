@@ -1,17 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import {
   ShieldCheck,
   CreditCard,
   Lock,
-  CheckCircle2,
   AlertTriangle,
   RefreshCw,
   ArrowRight,
-  ExternalLink
+  ExternalLink,
+  ChevronLeft,
+  FileCheck2,
+  KeyRound,
+  CheckCircle2
 } from 'lucide-react';
 import { api } from '../services/api.js';
 import { useCart } from '../context/CartContext.js';
+import { Button } from '../components/ui/Button.js';
+import { Badge } from '../components/ui/Badge.js';
+import { Card } from '../components/ui/Card.js';
 
 export const CheckoutPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -25,11 +32,14 @@ export const CheckoutPage: React.FC = () => {
   const [capturing, setCapturing] = useState(false);
   const [paypalConfig, setPaypalConfig] = useState<any>(null);
   const [orderPayload, setOrderPayload] = useState<any>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ code: string; message: string } | null>(null);
 
   useEffect(() => {
     if (!passportId || !approvalId) {
-      setError('Missing passportId or approvalId parameters.');
+      setError({
+        code: 'MISSING_PARAMETERS',
+        message: 'Both passportId and approvalId are required to initiate checkout.'
+      });
       setLoading(false);
       return;
     }
@@ -39,27 +49,45 @@ export const CheckoutPage: React.FC = () => {
   const initializeCheckout = async () => {
     try {
       setLoading(true);
+      setError(null);
+
+      // Check PayPal configuration first
       const config = await api.getPayPalConfig();
       setPaypalConfig(config);
 
+      if (!config.configured) {
+        setError({
+          code: 'PAYPAL_NOT_CONFIGURED',
+          message:
+            'PayPal Sandbox credentials are not configured on this server. In accordance with AEGIS Phase 5 security specifications, automated orders cannot be simulated as completed without genuine sandbox credentials.'
+        });
+        setLoading(false);
+        return;
+      }
+
+      // Create official PayPal Orders v2 Order
       const orderData = await api.createPayPalOrder(passportId!, approvalId!);
       setOrderPayload(orderData);
     } catch (err: any) {
-      setError(err.message || 'Failed to initialize PayPal order.');
+      const errCode = err.code || err.error || 'ORDER_CREATION_FAILED';
+      setError({
+        code: errCode,
+        message: err.message || 'Failed to initialize PayPal order.'
+      });
     } finally {
       setLoading(false);
     }
   };
 
   const handleCaptureOrder = async () => {
-    if (!orderPayload) return;
+    if (!orderPayload || !paypalConfig?.configured) return;
     try {
       setCapturing(true);
       const result = await api.capturePayPalOrder(orderPayload.paypalOrderId, approvalId!);
       await refreshCart();
       navigate(`/orders?success=true&orderId=${result.order.orderId}`);
     } catch (err: any) {
-      alert(`Capture failed: ${err.message}`);
+      alert(`Payment capture failed: ${err.message}`);
     } finally {
       setCapturing(false);
     }
@@ -67,122 +95,201 @@ export const CheckoutPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center">
-        <div className="text-center font-mono space-y-3">
-          <RefreshCw className="w-8 h-8 animate-spin text-shopblue mx-auto" />
-          <p className="text-sm text-slate-400">Verifying Mandate Fingerprint with PayPal Orders v2...</p>
-        </div>
+      <div className="min-h-screen bg-bg text-text flex items-center justify-center p-6">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="text-center font-mono space-y-4"
+        >
+          <RefreshCw className="w-9 h-9 animate-spin text-brand-blue mx-auto" />
+          <div>
+            <h3 className="font-bold text-sm text-text">Communicating with PayPal AEGIS Gateway</h3>
+            <p className="text-xs text-text-muted mt-1">Verifying cryptographic mandate fingerprint & currency bounds...</p>
+          </div>
+        </motion.div>
       </div>
     );
   }
 
+  // Missing Credentials or Error State (Phase 5A requirement)
   if (error) {
-    return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-6">
-        <div className="max-w-md w-full bg-shopnavy border border-rose-800 rounded-3xl p-8 text-center">
-          <AlertTriangle className="w-12 h-12 text-rose-500 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-white mb-2">Checkout Security Intercept</h2>
-          <p className="text-xs text-rose-300 font-mono mb-6">{error}</p>
-          <button
-            onClick={() => navigate('/cart')}
-            className="w-full py-3 rounded-xl bg-slate-800 text-white font-bold text-sm"
-          >
-            Return to Cart
-          </button>
-        </div>
-      </div>
-    );
-  }
+    const isNotConfigured = error.code === 'PAYPAL_NOT_CONFIGURED';
 
-  return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-xl mx-auto">
-        {/* Card */}
-        <div className="bg-shopnavy border border-slate-800 rounded-3xl p-8 shadow-2xl">
-          {/* Top Logo */}
-          <div className="flex items-center justify-between border-b border-slate-800 pb-6 mb-6">
-            <div className="flex items-center space-x-2">
-              <span className="font-black text-xl tracking-tight text-white">
-                SHOPMATE<span className="text-shopblue">.AI</span>
-              </span>
-              <span className="text-slate-500">•</span>
-              <span className="text-xs font-mono text-slate-400">PAYPAL CHECKOUT</span>
+    return (
+      <div className="min-h-screen bg-bg text-text py-16 px-4 sm:px-6 lg:px-8">
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="max-w-xl mx-auto"
+        >
+          <Card className="p-8 shadow-soft-xl border-status-warning-border">
+            <div className="flex items-center space-x-3 mb-6">
+              <div className="w-12 h-12 rounded-2xl bg-status-warning-bg border border-status-warning-border flex items-center justify-center text-status-warning">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <div>
+                <Badge variant="warning" className="font-mono text-[11px] mb-1">
+                  {error.code}
+                </Badge>
+                <h2 className="text-lg font-bold text-text">
+                  {isNotConfigured ? 'PayPal Sandbox Configuration Required' : 'Payment Initialization Intercepted'}
+                </h2>
+              </div>
             </div>
 
-            <div className="flex items-center space-x-1.5 text-emerald-400 font-mono text-xs font-bold bg-emerald-950 px-2.5 py-1 rounded-full border border-emerald-800">
+            <p className="text-xs text-text-muted leading-relaxed mb-6 font-sans">
+              {error.message}
+            </p>
+
+            {isNotConfigured && (
+              <div className="bg-bg-subtle border border-border rounded-xl p-4 mb-6 font-mono text-[11px] text-text-muted space-y-2">
+                <div className="font-bold text-text flex items-center space-x-1.5">
+                  <KeyRound className="w-3.5 h-3.5 text-brand-blue" />
+                  <span>Setup Instructions:</span>
+                </div>
+                <div className="text-[11px] leading-relaxed">
+                  1. Open your PayPal Developer Dashboard at <code className="text-brand-blue">developer.paypal.com</code><br />
+                  2. Copy your Sandbox <code className="text-text font-bold">Client ID</code> and <code className="text-text font-bold">Secret</code><br />
+                  3. Add to <code className="text-brand-violet font-bold">server/.env</code>:<br />
+                  <pre className="bg-surface p-2 rounded border border-border mt-1 text-[10px] overflow-x-auto">
+PAYPAL_CLIENT_ID=your_sandbox_client_id
+PAYPAL_CLIENT_SECRET=your_sandbox_secret
+                  </pre>
+                  4. Restart the backend server.
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                onClick={() => navigate(`/passport?id=${passportId || ''}`)}
+                variant="secondary"
+                size="md"
+                icon={<ChevronLeft className="w-4 h-4" />}
+              >
+                Return to Passport
+              </Button>
+              <Button
+                onClick={() => navigate('/cart')}
+                variant="outline"
+                size="md"
+              >
+                View Cart
+              </Button>
+            </div>
+          </Card>
+        </motion.div>
+      </div>
+    );
+  }
+
+  // Active PayPal Checkout Screen
+  return (
+    <div className="min-h-screen bg-bg text-text py-12 px-4 sm:px-6 lg:px-8">
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="max-w-xl mx-auto"
+      >
+        <Card className="p-8 shadow-soft-xl border-border">
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-border pb-6 mb-6">
+            <div>
+              <span className="font-black text-xl tracking-tight text-text">
+                SHOPMATE<span className="text-brand-blue">.AI</span>
+              </span>
+              <span className="text-xs font-mono text-text-muted block mt-0.5">
+                PAYPAL ORDERS V2 CHECKOUT
+              </span>
+            </div>
+
+            <div className="flex items-center space-x-1 text-status-success font-mono text-[11px] font-bold bg-status-success-bg px-3 py-1 rounded-full border border-status-success-border">
               <ShieldCheck className="w-3.5 h-3.5" />
-              <span>AEGIS FINGERPRINT VERIFIED</span>
+              <span>HMAC MANDATE VERIFIED</span>
             </div>
           </div>
 
           {/* Amount Box */}
-          <div className="bg-slate-900/90 rounded-2xl p-6 border border-slate-800 text-center mb-6">
-            <span className="text-xs font-mono text-slate-400 block mb-1">
-              Authorized Payment Amount
+          <div className="bg-bg-subtle rounded-2xl p-6 border border-border text-center mb-6">
+            <span className="text-xs font-mono text-text-muted block mb-1">
+              Authorized Payment Total
             </span>
-            <div className="text-4xl font-black font-mono text-white mb-2">
-              ${orderPayload?.finalAmount || '0.00'} <span className="text-sm font-bold text-slate-500">USD</span>
+            <div className="text-4xl font-black font-mono text-text mb-2 tabular-nums">
+              ${orderPayload?.finalAmount || '0.00'}{' '}
+              <span className="text-sm font-bold text-text-muted">{orderPayload?.currency || 'USD'}</span>
             </div>
-            <span className="text-[11px] font-mono text-slate-500">
-              PayPal Order ID: {orderPayload?.paypalOrderId}
-            </span>
+            <div className="text-[11px] font-mono text-text-muted flex items-center justify-center space-x-1">
+              <span>PayPal Order:</span>
+              <code className="text-text font-semibold">{orderPayload?.paypalOrderId}</code>
+            </div>
           </div>
 
-          {/* Environment Status Notice */}
-          <div className="bg-blue-950/40 border border-blue-800/60 rounded-2xl p-4 mb-8 text-xs font-mono text-blue-200">
+          {/* Environment Status Badge */}
+          <div className="bg-brand-blue-50 dark:bg-brand-blue-900/20 border border-brand-blue-100 dark:border-brand-blue-800/40 rounded-xl p-4 mb-6 text-xs text-brand-blue-700 dark:text-brand-blue-300">
             <div className="flex items-center space-x-2 font-bold mb-1">
-              <Lock className="w-4 h-4 text-blue-400" />
-              <span>PAYPAL SANDBOX ENVIRONMENT</span>
+              <Lock className="w-4 h-4 text-brand-blue" />
+              <span>PAYPAL ORDERS V2 SANDBOX INTEGRATION</span>
             </div>
-            <p className="text-[11px] text-blue-300 leading-relaxed font-sans">
-              {paypalConfig?.configured
-                ? 'Connected to live PayPal Sandbox Orders v2 REST API. Real sandbox credentials loaded.'
-                : 'Offline rule-based sandbox simulation. Real PayPal Orders v2 schema verified. To connect live PayPal Sandbox, add PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET to server/.env.'}
+            <p className="text-[11px] leading-relaxed opacity-90 font-sans">
+              Connected to official PayPal Sandbox REST API. Payment capture runs server-authoritatively through backend verification with duplicate replay protection.
             </p>
           </div>
 
-          {/* Checkout Buttons */}
-          <div className="space-y-4">
-            {orderPayload?.approveUrl && paypalConfig?.configured ? (
+          {/* Actions */}
+          <div className="space-y-3">
+            {orderPayload?.approveUrl ? (
               <a
                 href={orderPayload.approveUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="w-full py-4 rounded-2xl bg-[#0070BA] hover:bg-[#003087] text-white font-bold text-sm flex items-center justify-center space-x-2 transition shadow-lg"
+                className="w-full py-4 rounded-xl bg-[#0070BA] hover:bg-[#003087] text-white font-bold text-sm flex items-center justify-center space-x-2 transition shadow-lg"
               >
-                <span>Authorize with PayPal Sandbox</span>
+                <span>Authorize on PayPal Checkout</span>
                 <ExternalLink className="w-4 h-4" />
               </a>
             ) : null}
 
-            {/* Direct Sandbox Capture Trigger */}
-            <button
+            <Button
               onClick={handleCaptureOrder}
               disabled={capturing}
-              className="w-full py-4 rounded-2xl bg-gradient-to-r from-shopblue to-emerald-500 hover:from-shopblue-600 hover:to-emerald-600 disabled:opacity-50 text-white font-bold text-sm flex items-center justify-center space-x-2 transition shadow-xl"
+              variant="gradient"
+              size="lg"
+              className="w-full py-4 rounded-xl shadow-lg"
             >
               {capturing ? (
                 <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <RefreshCw className="w-4 h-4 animate-spin mr-2" />
                   <span>Capturing Payment & Generating Order...</span>
                 </>
               ) : (
                 <>
-                  <CreditCard className="w-4 h-4" />
-                  <span>Execute Authorized Sandbox Payment</span>
-                  <ArrowRight className="w-4 h-4 ml-1" />
+                  <CreditCard className="w-4 h-4 mr-2" />
+                  <span>Capture Authorized Sandbox Payment</span>
+                  <ArrowRight className="w-4 h-4 ml-2" />
                 </>
               )}
-            </button>
+            </Button>
+
+            <Button
+              onClick={() => navigate(`/passport?id=${passportId || ''}`)}
+              variant="outline"
+              size="md"
+              className="w-full"
+            >
+              Back to Purchase Passport
+            </Button>
           </div>
 
-          {/* Bottom Security Note */}
-          <p className="text-[11px] text-slate-500 text-center font-mono mt-6">
-            Single-use HMAC-SHA256 mandate will be marked as used upon capture to permanently prevent replay attacks.
-          </p>
-        </div>
-      </div>
+          {/* Footer note */}
+          <div className="mt-6 pt-4 border-t border-border flex items-center justify-between text-[11px] font-mono text-text-muted">
+            <span className="flex items-center space-x-1">
+              <FileCheck2 className="w-3.5 h-3.5 text-brand-blue" />
+              <span>Single-use mandate</span>
+            </span>
+            <span>15-min TTL protection</span>
+          </div>
+        </Card>
+      </motion.div>
     </div>
   );
 };
-

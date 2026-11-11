@@ -247,7 +247,7 @@ export const WorkspacePage: React.FC = () => {
           conversationId: activeConversationId || undefined,
           updatedRequirements: reqsOverride || undefined
         },
-        (chunk) => {
+        (chunk: string) => {
           // Parse SSE stream chunks
           const lines = chunk.split('\n');
           for (const line of lines) {

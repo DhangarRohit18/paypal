@@ -4,13 +4,59 @@ import {
   generatePassport,
   getPassport,
   rejectPassport,
-  exportPassport
+  exportPassport,
+  createCoApproverShare,
+  getPassportByShareToken,
+  approvePassportByShareToken
 } from '../services/passportService.js';
 import { approvePassportAndIssueMandate } from '../services/mandateService.js';
 import { getOrCreateCart } from '../services/cartService.js';
 import { store } from '../db/inMemoryStore.js';
 
 const router = Router();
+
+// ----------------------------------------------------------------------------
+// Public Co-Approver Share Endpoints (Must be mounted before requireAuth middleware)
+// ----------------------------------------------------------------------------
+router.get('/share/:token', (req, res) => {
+  const result = getPassportByShareToken(req.params.token);
+  if (!result.passport) {
+    res.status(404).json({ error: 'SHARE_LINK_NOT_FOUND', message: 'This review share link does not exist.' });
+    return;
+  }
+
+  if (result.isExpired) {
+    res.status(410).json({ error: 'SHARE_LINK_EXPIRED', message: 'This review share link has expired.' });
+    return;
+  }
+
+  // Return sanitized passport snapshot
+  res.json({
+    success: true,
+    passport: result.passport,
+    creatorName: result.creatorName,
+    isApproved: result.isApproved
+  });
+});
+
+router.post('/share/:token/approve', (req, res) => {
+  const { approverName } = req.body || {};
+  const name = approverName?.trim() || 'Designated Co-Approver';
+
+  const result = approvePassportByShareToken(req.params.token, name);
+  if (!result.success) {
+    res.status(400).json({ error: result.error, message: 'Failed to co-approve passport.' });
+    return;
+  }
+
+  res.json({
+    success: true,
+    passport: result.passport,
+    message: `Purchase Passport successfully co-approved by ${name}.`
+  });
+});
+
+// All subsequent routes require authenticated user session
 router.use(requireAuth);
 
 // ----------------------------------------------------------------------------
@@ -39,6 +85,32 @@ const handleGeneratePassport = (req: AuthRequest, res: Response) => {
 
 router.post('/', handleGeneratePassport);
 router.post('/generate', handleGeneratePassport);
+
+// ----------------------------------------------------------------------------
+// POST /api/passports/:passportId/share — Generate Co-Approver Share Link
+// ----------------------------------------------------------------------------
+router.post('/:passportId/share', (req: AuthRequest, res: Response) => {
+  const userId = req.userId || req.user?.userId;
+  if (!userId) {
+    res.status(401).json({ error: 'UNAUTHENTICATED' });
+    return;
+  }
+
+  const user = store.getUserById(userId);
+  const creatorName = user?.name || 'Shopper';
+
+  try {
+    const shareData = createCoApproverShare(req.params.passportId, userId, creatorName);
+    res.json({
+      success: true,
+      shareUrl: shareData.shareUrl,
+      token: shareData.token,
+      expiresAt: shareData.expiresAt
+    });
+  } catch (err: any) {
+    res.status(404).json({ error: err.message });
+  }
+});
 
 // ----------------------------------------------------------------------------
 // GET /api/passports/:passportId — Inspect Purchase Passport
@@ -151,7 +223,10 @@ router.get('/:passportId/export', (req: AuthRequest, res: Response) => {
     return;
   }
 
-  const format = (req.query.format as string) === 'pdf' || (req.query.format as string) === 'html' ? 'html' : 'json';
+  const format =
+    (req.query.format as string) === 'pdf' || (req.query.format as string) === 'html'
+      ? 'html'
+      : 'json';
   const exported = exportPassport(passport, format);
 
   res.setHeader('Content-Type', exported.contentType);
