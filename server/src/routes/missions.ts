@@ -1,11 +1,13 @@
 import { Router } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
+import mongoose from 'mongoose';
 import { requireAuth, AuthRequest } from '../middleware/auth.js';
 import { store } from '../db/inMemoryStore.js';
 import { optimizeBundles } from '../services/bundleOptimizer.js';
 import { addToCart, clearCart } from '../services/cartService.js';
 import { IMission } from '../../../shared/types.js';
+import { ShoppingMissionModel } from '../models/ShoppingMission.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -15,6 +17,14 @@ const CreateMissionSchema = z.object({
   targetBudget: z.number().positive(),
   categoriesNeeded: z.array(z.string()).optional(),
   preferredBrands: z.array(z.string()).optional()
+});
+
+router.get('/', (req: AuthRequest, res) => {
+  const missions = Array.from(store.missions.values())
+    .filter((m) => m.userId === req.userId)
+    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+
+  res.json({ success: true, count: missions.length, missions });
 });
 
 router.get('/presets', (req, res) => {
@@ -85,6 +95,20 @@ router.post('/create', (req: AuthRequest, res) => {
 
   store.missions.set(mission.id, mission);
 
+  if (mongoose.connection.readyState === 1) {
+    ShoppingMissionModel.create({
+      missionId: mission.id,
+      userId: mission.userId,
+      goal: mission.goal,
+      targetBudget: mission.targetBudget,
+      status: mission.status,
+      understoodRequirements: mission.understoodRequirements,
+      plans: mission.plans,
+      createdAt: mission.createdAt,
+      updatedAt: mission.updatedAt
+    }).catch((err) => console.warn('MongoDB mission creation sync error:', err));
+  }
+
   res.status(201).json({
     success: true,
     mission
@@ -133,6 +157,13 @@ router.post('/:id/select-plan', (req: AuthRequest, res) => {
   mission.status = 'cart_proposed';
   mission.updatedAt = new Date().toISOString();
   store.missions.set(mission.id, mission);
+
+  if (mongoose.connection.readyState === 1) {
+    ShoppingMissionModel.updateOne(
+      { missionId: mission.id },
+      { $set: { selectedPlanId: planId, status: 'cart_proposed', updatedAt: mission.updatedAt } }
+    ).catch((err) => console.warn('MongoDB mission plan selection sync error:', err));
+  }
 
   res.json({
     success: true,

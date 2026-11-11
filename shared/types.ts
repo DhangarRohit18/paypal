@@ -296,7 +296,7 @@ export interface IPurchasePassport {
     indicators: ITrustIndicator[];
   };
   riskAssessment: {
-    level: 'LOW' | 'MEDIUM' | 'HIGH';
+    level: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
     heuristicReasons: string[];
     recommendedAction: string;
   };

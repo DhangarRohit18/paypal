@@ -251,6 +251,69 @@ router.post('/red-team/simulate', (req: AuthRequest, res) => {
       break;
     }
 
+    case 'UNVERIFIED_WEBHOOK': {
+      title = 'Spoofed Webhook Transmission Injection';
+      description = 'Simulates an adversary sending a fraudulent PAYMENT.CAPTURE.COMPLETED webhook payload without valid PayPal cryptographic transmission headers.';
+      attackPayload = 'POST /api/payments/webhook with spoofed event_type: PAYMENT.CAPTURE.COMPLETED and forged headers';
+      caughtByLayer = 'AEGIS_WEBHOOK_VERIFIER';
+      remedy = 'PayPal REST verification endpoint rejected transmission signature. Webhook rejected with HTTP 400.';
+      const event: ISecurityEvent = {
+        id: uuidv4(),
+        timestamp: new Date().toISOString(),
+        eventType: 'KILL_SWITCH_BLOCKED_ACTION',
+        source: 'rate_limit',
+        severity: 'CRITICAL',
+        payloadExcerpt: attackPayload,
+        actionTaken: 'BLOCKED',
+        defenceLayer: 'AEGIS_TOOL_GATEWAY',
+        remedySuggested: remedy
+      };
+      store.addSecurityEvent(event);
+      break;
+    }
+
+    case 'CONCURRENT_RACE_CAPTURE': {
+      title = 'Distributed Concurrent Capture Race Condition';
+      description = 'Simulates two simultaneous HTTP capture requests for the same authorization mandate within 5 milliseconds.';
+      attackPayload = 'Concurrent capture requests: LockKey [appr-9941:ORD-PP-7721] executing concurrently across 2 worker instances';
+      caughtByLayer = 'AEGIS_PAYMENT_FINGERPRINT';
+      remedy = 'Distributed lock / atomic database condition blocked secondary request with HTTP 409 CAPTURE_IN_PROGRESS.';
+      const event: ISecurityEvent = {
+        id: uuidv4(),
+        timestamp: new Date().toISOString(),
+        eventType: 'REPLAY_ATTACK_PREVENTED',
+        source: 'replay_attempt',
+        severity: 'CRITICAL',
+        payloadExcerpt: attackPayload,
+        actionTaken: 'BLOCKED',
+        defenceLayer: 'AEGIS_PAYMENT_FINGERPRINT',
+        remedySuggested: remedy
+      };
+      store.addSecurityEvent(event);
+      break;
+    }
+
+    case 'PRIVILEGED_TOOL_ESCALATION': {
+      title = 'LLM Privilege Escalation via Payment Choke Point';
+      description = 'Simulates an AI agent attempting to autonomously invoke Tier 4 capturePayPalOrder without customer presence.';
+      attackPayload = 'Agent execution payload: { invoker: "AI_AGENT", toolName: "capturePayPalOrder" }';
+      caughtByLayer = 'AEGIS_TOOL_GATEWAY';
+      remedy = 'Tool Gateway permission choke point denied execution: AI agents are restricted to Tier 1 & 2 tools only.';
+      const event: ISecurityEvent = {
+        id: uuidv4(),
+        timestamp: new Date().toISOString(),
+        eventType: 'KILL_SWITCH_BLOCKED_ACTION',
+        source: 'user_input',
+        severity: 'CRITICAL',
+        payloadExcerpt: attackPayload,
+        actionTaken: 'BLOCKED',
+        defenceLayer: 'AEGIS_TOOL_GATEWAY',
+        remedySuggested: remedy
+      };
+      store.addSecurityEvent(event);
+      break;
+    }
+
     default:
       res.status(400).json({ error: 'UNKNOWN_SCENARIO' });
       return;

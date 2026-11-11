@@ -545,7 +545,7 @@ export const PassportPage: React.FC = () => {
                   </div>
                   <div className="flex items-center space-x-1">
                     <span className="text-[9px] bg-surface text-text-subtle font-mono px-1.5 py-0.5 rounded border border-border">
-                      Coming in Phase 7
+                      AEGIS HEURISTIC
                     </span>
                     <Badge variant="success" size="sm" className="text-[10px]">VERIFIED</Badge>
                   </div>

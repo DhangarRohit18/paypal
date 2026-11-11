@@ -1,29 +1,54 @@
 import { Router } from 'express';
 import { v4 as uuidv4 } from 'uuid';
+import mongoose from 'mongoose';
 import { requireAuth, AuthRequest } from '../middleware/auth.js';
 import { store } from '../db/inMemoryStore.js';
 import { IResolutionRequest } from '../../../shared/types.js';
+import { OrderModel } from '../models/Order.js';
 
 const router = Router();
 router.use(requireAuth);
 
-router.get('/', (req: AuthRequest, res) => {
-  const orders = Array.from(store.orders.values())
-    .filter(o => o.userId === req.userId)
+router.get('/', async (req: AuthRequest, res) => {
+  let orders = Array.from(store.orders.values())
+    .filter((o) => o.userId === req.userId)
     .sort((a, b) => new Date(b.placedAt).getTime() - new Date(a.placedAt).getTime());
+
+  if (mongoose.connection.readyState === 1) {
+    try {
+      const dbOrders = await OrderModel.find({ userId: req.userId }).sort({ placedAt: -1 }).lean();
+      if (dbOrders && dbOrders.length > 0) {
+        orders = dbOrders as any;
+      }
+    } catch (err) {
+      console.warn('Error fetching orders from MongoDB:', err);
+    }
+  }
 
   res.json({ orders });
 });
 
-router.get('/:id', (req: AuthRequest, res) => {
-  const order = store.orders.get(req.params.id);
+router.get('/:id', async (req: AuthRequest, res) => {
+  let order = store.orders.get(req.params.id);
+
+  if (!order && mongoose.connection.readyState === 1) {
+    try {
+      const dbOrder = await OrderModel.findOne({ orderId: req.params.id, userId: req.userId }).lean();
+      if (dbOrder) {
+        order = dbOrder as any;
+      }
+    } catch (err) {
+      console.warn('Error fetching order from MongoDB:', err);
+    }
+  }
+
   if (!order || order.userId !== req.userId) {
     res.status(404).json({ error: 'ORDER_NOT_FOUND' });
     return;
   }
 
   const resolutions = Array.from(store.resolutions.values()).filter(
-    r => r.orderId === order.orderId
+    (r) => r.orderId === order!.orderId
   );
 
   res.json({ order, resolutions });

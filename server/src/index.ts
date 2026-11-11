@@ -18,6 +18,8 @@ import { shoppingRouter } from './routes/shopping.js';
 import { dashboardRouter } from './routes/dashboard.js';
 import { settingsRouter } from './routes/settings.js';
 import { isPayPalConfigured } from './payments/paypalClient.js';
+import { connectDB } from './db/connection.js';
+import mongoose from 'mongoose';
 
 export const app = express();
 const PORT = process.env.PORT || 5000;
@@ -64,6 +66,10 @@ app.get('/api/health', (req, res) => {
     service: 'SHOPMATE AI Platform',
     engine: 'PAYPAL AEGIS (Active)',
     architecture: '4-Layer Coordinated Orchestrator',
+    database: {
+      connected: mongoose.connection.readyState === 1,
+      engine: mongoose.connection.readyState === 1 ? 'MongoDB (Durable Persistence)' : 'In-Memory Store (Dev/Test Fallback)'
+    },
     paypalSandbox: {
       configured: isPayPalConfigured(),
       clientIdPresent: !!process.env.PAYPAL_CLIENT_ID,
@@ -95,16 +101,25 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 // Start listener only when run directly as the main application process
 const isDirectRun = process.argv[1] && (process.argv[1].endsWith('index.ts') || process.argv[1].endsWith('index.js'));
 if (isDirectRun && process.env.NODE_ENV !== 'test') {
-  app.listen(PORT, () => {
-    console.log('\n===============================================================');
-    console.log('🛍️  SHOPMATE AI — Discover Smarter. Shop Better. Stay in Control.');
-    console.log('🛡️  PAYPAL AEGIS TRUST & VERIFICATION ENGINE: ONLINE');
-    console.log(`🚀  Backend server listening on http://localhost:${PORT}`);
-    console.log(`📦  Catalogue: ${store.products.length} products loaded across 9 categories`);
-    console.log(`💳  PayPal Sandbox: ${isPayPalConfigured() ? 'CONFIGURED (Real Orders v2 Ready)' : 'OFFLINE SIMULATION READY (Add credentials to .env)'}`);
-    console.log(`🤖  LLM Mode: ${process.env.GEMINI_API_KEY ? 'GEMINI 1.5 ACTIVE' : 'OFFLINE RULE-BASED MODE (Deterministic)'}`);
-    console.log('===============================================================\n');
-  });
+  (async () => {
+    try {
+      await connectDB();
+    } catch (dbErr: any) {
+      console.warn('[DB_INIT_WARN]', dbErr.message);
+    }
+
+    app.listen(PORT, () => {
+      console.log('\n===============================================================');
+      console.log('🛍️  SHOPMATE AI — Discover Smarter. Shop Better. Stay in Control.');
+      console.log('🛡️  PAYPAL AEGIS TRUST & VERIFICATION ENGINE: ONLINE');
+      console.log(`🚀  Backend server listening on http://localhost:${PORT}`);
+      console.log(`📦  Catalogue: ${store.products.length} products loaded across 9 categories`);
+      console.log(`💾  Database: ${mongoose.connection.readyState === 1 ? 'MONGODB CONNECTED (Durable)' : 'LOCAL IN-MEMORY STORE'}`);
+      console.log(`💳  PayPal Sandbox: ${isPayPalConfigured() ? 'CONFIGURED (Real Orders v2 Ready)' : 'OFFLINE SIMULATION READY (Add credentials to .env)'}`);
+      console.log(`🤖  LLM Mode: ${process.env.GEMINI_API_KEY ? 'GEMINI 1.5 ACTIVE' : 'OFFLINE RULE-BASED MODE (Deterministic)'}`);
+      console.log('===============================================================\n');
+    });
+  })();
 }
 
 export default app;

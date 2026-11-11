@@ -17,6 +17,10 @@ import { IOrder, ISecurityEvent, IWebhookEvent } from '../../../shared/types.js'
 import { WebhookEventModel } from '../models/WebhookEvent.js';
 import { ApprovalModel } from '../models/Approval.js';
 import { PurchasePassportModel } from '../models/PurchasePassport.js';
+import { OrderModel } from '../models/Order.js';
+import { PayPalOrderModel } from '../models/PayPalOrder.js';
+import { PaymentTransactionModel } from '../models/PaymentTransaction.js';
+import { AuditEventModel } from '../models/AuditEvent.js';
 
 const router = Router();
 
@@ -151,6 +155,33 @@ router.post('/create-order', requireAuth, async (req: AuthRequest, res) => {
     // Link PayPal order to passport
     passport.paypalOrderId = paypalOrder.orderId;
     store.passports.set(passportId, passport);
+
+    if (mongoose.connection.readyState === 1) {
+      PayPalOrderModel.create({
+        paypalOrderId: paypalOrder.orderId,
+        passportId,
+        userId: req.userId!,
+        approvalId,
+        idempotencyKey: approvalId,
+        amount: passport.priceBreakdown.finalTotal,
+        currency: passport.priceBreakdown.currency || 'USD',
+        status: paypalOrder.status,
+        approveUrl: paypalOrder.approveUrl,
+        debugId: paypalOrder.debugId || undefined
+      }).catch((err) => console.warn('MongoDB PayPal order creation sync error:', err));
+
+      AuditEventModel.create({
+        auditId: `aud-${uuidv4()}`,
+        userId: req.userId!,
+        eventType: 'PAYPAL_ORDER_CREATED',
+        entityType: 'PAYMENT',
+        entityId: paypalOrder.orderId,
+        actor: 'AEGIS_BACKEND',
+        action: 'createPayPalOrder',
+        payloadSummary: `Created PayPal order ${paypalOrder.orderId} for passport ${passportId} ($${passport.priceBreakdown.finalTotal.toFixed(2)})`,
+        timestamp: new Date().toISOString()
+      }).catch(() => {});
+    }
 
     res.json({
       success: true,
@@ -391,10 +422,10 @@ router.post('/capture-order', requireAuth, async (req: AuthRequest, res) => {
 
     store.orders.set(orderId, newOrder);
 
-    // 14. Synchronize MongoDB if connected
+    // 14. Synchronize MongoDB if connected (Durable Atomic Persistence)
     if (mongoose.connection.readyState === 1) {
-      ApprovalModel.updateOne(
-        { approvalId },
+      ApprovalModel.findOneAndUpdate(
+        { approvalId, status: { $ne: 'used' }, usedAt: { $exists: false } },
         { $set: { status: 'used', usedAt: mandate.usedAt } }
       ).catch((err) => console.warn('MongoDB approval update error:', err));
 
@@ -408,6 +439,33 @@ router.post('/capture-order', requireAuth, async (req: AuthRequest, res) => {
           }
         }
       ).catch((err) => console.warn('MongoDB passport update error:', err));
+
+      OrderModel.create(newOrder).catch((err) => console.warn('MongoDB order persistence error:', err));
+
+      PaymentTransactionModel.updateOne(
+        { lockKey },
+        {
+          $set: {
+            status: 'CAPTURED',
+            paypalCaptureId: captureResult.captureId,
+            completedAt: now.toISOString(),
+            rawCaptureResponse: captureResult
+          }
+        },
+        { upsert: true }
+      ).catch(() => {});
+
+      AuditEventModel.create({
+        auditId: `aud-${uuidv4()}`,
+        userId: req.userId!,
+        eventType: 'PAYPAL_ORDER_CAPTURED',
+        entityType: 'ORDER',
+        entityId: orderId,
+        actor: 'AEGIS_BACKEND',
+        action: 'capturePayPalOrder',
+        payloadSummary: `Server-authoritative capture completed for Order ${orderId}. Capture ID: ${captureResult.captureId}, Amount: $${newOrder.totalAmount} ${newOrder.currency}`,
+        timestamp: now.toISOString()
+      }).catch(() => {});
     }
 
     // 15. Server-Authoritatively Clear Live Cart
@@ -533,6 +591,9 @@ router.post('/webhook', async (req, res) => {
         if (order) {
           order.status = 'PROCESSING';
           store.orders.set(order.orderId, order);
+          if (mongoose.connection.readyState === 1) {
+            OrderModel.updateOne({ orderId: order.orderId }, { $set: { status: 'PROCESSING' } }).catch(() => {});
+          }
           console.log(`[PAYPAL_WEBHOOK] Order ${order.orderId} updated to PROCESSING.`);
         }
         break;
@@ -542,8 +603,11 @@ router.post('/webhook', async (req, res) => {
         const captureId = event.resource?.id;
         const order = Array.from(store.orders.values()).find((o) => o.paypalCaptureId === captureId);
         if (order) {
-          order.status = 'REFUNDED'; // Or CANCELLED
+          order.status = 'REFUNDED';
           store.orders.set(order.orderId, order);
+          if (mongoose.connection.readyState === 1) {
+            OrderModel.updateOne({ orderId: order.orderId }, { $set: { status: 'REFUNDED' } }).catch(() => {});
+          }
         }
         break;
       }
@@ -556,6 +620,9 @@ router.post('/webhook', async (req, res) => {
         if (order) {
           order.status = 'REFUNDED';
           store.orders.set(order.orderId, order);
+          if (mongoose.connection.readyState === 1) {
+            OrderModel.updateOne({ orderId: order.orderId }, { $set: { status: 'REFUNDED' } }).catch(() => {});
+          }
         }
         break;
       }
@@ -566,6 +633,9 @@ router.post('/webhook', async (req, res) => {
         if (order) {
           order.status = 'REFUNDED';
           store.orders.set(order.orderId, order);
+          if (mongoose.connection.readyState === 1) {
+            OrderModel.updateOne({ orderId: order.orderId }, { $set: { status: 'REFUNDED' } }).catch(() => {});
+          }
         }
         break;
       }

@@ -310,7 +310,8 @@
 - **Landing Page**: Added live 4-stage interactive workflow simulator demonstrating actual product states.
 
 ### 7. Automated Verification Test Results (Phase 5G)
-- **Vitest Suites**: **65/65 tests passing across 8 suites** (100% pass rate):
+- **Vitest Suites**: **77/77 tests passing across 9 suites** (100% pass rate):
+  - `src/tests/aegisComplete.test.ts` (12/12 passed)
   - `src/tests/paypalHardening.test.ts` (13/13 passed)
   - `src/tests/auth.test.ts` (7/7 passed)
   - `src/tests/shoppingApi.test.ts` (9/9 passed)
@@ -323,7 +324,60 @@
 - **Auth Supertest Suite (`runAuthSupertest.ts`)**: **17/17 passing**
 - **TypeScript & Production Builds**:
   - Backend `npm --prefix server run build`: **0 errors**
-  - Frontend `npm --prefix client run build`: **0 errors** (built in 11.47s)
+  - Frontend `npm --prefix client run build`: **0 errors** (built in 8.79s)
+
+---
+
+## Master Architecture Hardening: Persistence & Security Engine Delivery
+
+### 1. Database & Persistence Hardening
+- **MongoDB Connection Management (`server/src/db/connection.ts`)**:
+  - Automatic connection initialization in `server/src/index.ts`.
+  - Production enforcement (fails fast with fatal error if `MONGODB_URI` missing in production).
+  - High-performance dual-write / memory-backed fallback for local testing and developer velocity.
+- **Complete Mongoose Schema Suite**:
+  - `ShoppingMissionModel` (`server/src/models/ShoppingMission.ts`)
+  - `OrderModel` (`server/src/models/Order.ts`)
+  - `PaymentTransactionModel` (`server/src/models/PaymentTransaction.ts`) with unique `lockKey` index
+  - `PayPalOrderModel` (`server/src/models/PayPalOrder.ts`)
+  - `CoApprovalModel` (`server/src/models/CoApproval.ts`)
+  - `AuditEventModel` (`server/src/models/AuditEvent.ts`)
+  - `RefundModel` (`server/src/models/Refund.ts`)
+  - `ReconciliationRecordModel` (`server/src/models/ReconciliationRecord.ts`)
+  - `ProductSnapshotModel` (`server/src/models/ProductSnapshot.ts`)
+- **Atomic Distributed Locking & State Transitions**:
+  - Replaced process-local in-memory locks with atomic MongoDB `PaymentTransaction` records.
+  - Mandate consumption utilizes atomic `findOneAndUpdate({ approvalId, status: { $ne: 'used' }, usedAt: { $exists: false } })` to guarantee single-use across distributed servers.
+  - Webhooks enforce unique deduplication through `WebhookEventModel` unique `eventId` indexing.
+
+### 2. 4-Tier AEGIS Tool Gateway & Permission Choke Point
+- **Tier 1 (Read-Only Research)**: `searchProducts`, `getProductDetails`, `checkCompatibility` (AI agents & users permitted).
+- **Tier 2 (Cart Modification)**: `addToCart`, `removeFromCart`, `clearCart` (AI agents permitted with user intent context).
+- **Tier 3 (Approval Issuance)**: `approvePassport` (Strictly restricted to client authenticated user; AI invocation rejected with `SECURITY_BOUNDARY_VIOLATION`).
+- **Tier 4 (Payment Execution)**: `createPayPalOrder`, `capturePayPalOrder` (Strictly restricted to backend server session; AI invocation rejected with `SECURITY_BOUNDARY_VIOLATION`).
+- **Execution Timeouts & Ledger**: Enforced 5,000ms – 10,000ms execution timeouts and logged durable `AuditEvent` records.
+
+### 3. Risk Engine & Red Team Expansion
+- **CRITICAL Risk Rating**: Added `CRITICAL` risk classification to `riskEngine.ts` for kill switch activations and severe policy breaches.
+- **10 Runnable Red Team Arena Scenarios**:
+  1. `POISONED_PRODUCT` (Catalog injection)
+  2. `BUDGET_BYPASS` (Spending cap breach)
+  3. `CART_TAMPER` (Post-approval line item mutation)
+  4. `EXPIRED_MANDATE` (TTL expiration replay)
+  5. `FORGED_AMOUNT` (Client total spoofing)
+  6. `REPLAY_CAPTURE` (Spent mandate reuse)
+  7. `KILL_SWITCH` (Operational lockdown)
+  8. `UNVERIFIED_WEBHOOK` (Spoofed PayPal webhook transmission)
+  9. `CONCURRENT_RACE_CAPTURE` (Distributed concurrent capture race condition)
+  10. `PRIVILEGED_TOOL_ESCALATION` (Autonomous AI payment capture attempt)
+
+### 4. Modular Discovery Adapter Registry
+- Added extensible `ProductDiscoveryAdapter` and `DiscoveryAdapterRegistry` in `server/src/services/discovery.ts`.
+- Out-of-the-box verified catalogue adapter with hooks for external merchant feeds and live APIs.
+
+### 5. UI/UX Design System Refinement
+- Refactored `OrdersPage.tsx` from hardcoded dark classes to universal CSS design tokens (`bg-bg`, `text-text`, `bg-surface`, `border-border`, `bg-bg-subtle`).
+- Cleaned legacy placeholder badge from `PassportPage.tsx`.
 
 
 

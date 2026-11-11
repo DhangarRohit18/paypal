@@ -177,3 +177,40 @@ export function getCategories(): string[] {
   }
   return Array.from(cats);
 }
+
+/**
+ * Modular Provider Adapter interface for integrating external merchant feeds,
+ * APIs, and verified partner catalogues into the BUYWISE Discovery Engine.
+ */
+export interface ProductDiscoveryAdapter {
+  providerId: string;
+  providerName: string;
+  isVerified: boolean;
+  search(filters: SearchFilters): Promise<IProduct[]> | IProduct[];
+}
+
+class DiscoveryAdapterRegistry {
+  private adapters: Map<string, ProductDiscoveryAdapter> = new Map();
+
+  register(adapter: ProductDiscoveryAdapter): void {
+    this.adapters.set(adapter.providerId, adapter);
+  }
+
+  get(providerId: string): ProductDiscoveryAdapter | undefined {
+    return this.adapters.get(providerId);
+  }
+
+  getAll(): ProductDiscoveryAdapter[] {
+    return Array.from(this.adapters.values());
+  }
+}
+
+export const discoveryRegistry = new DiscoveryAdapterRegistry();
+
+// Register Default Verified In-Store Catalogue Adapter
+discoveryRegistry.register({
+  providerId: 'store-catalogue',
+  providerName: 'ShopMate Verified Catalogue',
+  isVerified: true,
+  search: (filters: SearchFilters) => searchProducts(filters)
+});

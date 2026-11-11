@@ -52,7 +52,7 @@ test.describe('Phase 4: Cart, Spending Guard, Purchase Passport & Signed Approva
 
     await expect(page.locator('h1:has-text("Purchase Passport")')).toBeVisible();
     await expect(page.locator('text=AWAITING APPROVAL')).toBeVisible();
-    await expect(page.locator('text=Coming in Phase 7').first()).toBeVisible();
+    await expect(page.locator('text=AEGIS HEURISTIC').first()).toBeVisible();
     await expect(page.locator('text=Exact Total')).toBeVisible();
 
     // 7. Click Approve to issue Signed Approval Mandate

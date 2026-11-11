@@ -12,6 +12,7 @@ import { buildFlightRecorderTimeline } from './flightRecorder.js';
 import { computeCartFingerprint } from './mandateService.js';
 import { PurchasePassportModel } from '../models/PurchasePassport.js';
 import { ApprovalModel } from '../models/Approval.js';
+import { CoApprovalModel } from '../models/CoApproval.js';
 
 export function generatePassport(
   userId: string,
@@ -224,6 +225,14 @@ export function createCoApproverShare(
   passport.coApproverExpiresAt = expiresAt;
   store.passports.set(passportId, passport);
 
+  if (mongoose.connection.readyState === 1) {
+    CoApprovalModel.create(shareRecord).catch((err) => console.warn('MongoDB co-approval share creation error:', err));
+    PurchasePassportModel.updateOne(
+      { passportId },
+      { $set: { coApproverToken: token, coApproverExpiresAt: expiresAt } }
+    ).catch(() => {});
+  }
+
   const baseUrl = (process.env.CLIENT_URL || process.env.APP_BASE_URL || 'http://localhost:3000').replace(/\/$/, '');
   const shareUrl = `${baseUrl}/passport?reviewToken=${token}`;
 
@@ -292,6 +301,17 @@ export function approvePassportByShareToken(
   passport.coApprovedBy = approverName;
   passport.coApprovedAt = now;
   store.passports.set(passport.passportId, passport);
+
+  if (mongoose.connection.readyState === 1) {
+    CoApprovalModel.updateOne(
+      { token },
+      { $set: { approved: true, approvedAt: now, approvedBy: approverName } }
+    ).catch(() => {});
+    PurchasePassportModel.updateOne(
+      { passportId: passport.passportId },
+      { $set: { coApprovedBy: approverName, coApprovedAt: now } }
+    ).catch(() => {});
+  }
 
   // If an active mandate exists for this passport, update its co-approval state as well
   for (const mandate of store.approvals.values()) {

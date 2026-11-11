@@ -139,6 +139,21 @@ export const SecurityCenter: React.FC = () => {
       id: 'KILL_SWITCH',
       name: 'Operational Lockdown Under Kill Switch',
       desc: 'Simulates executing purchasing actions while the master AEGIS Emergency Kill Switch is engaged.'
+    },
+    {
+      id: 'UNVERIFIED_WEBHOOK',
+      name: 'Spoofed Webhook Transmission Injection',
+      desc: 'Simulates sending an unverified PAYMENT.CAPTURE.COMPLETED webhook payload without valid PayPal cryptographic signature.'
+    },
+    {
+      id: 'CONCURRENT_RACE_CAPTURE',
+      name: 'Distributed Concurrent Capture Race Condition',
+      desc: 'Simulates two simultaneous HTTP capture requests for the same authorization mandate within 5 milliseconds.'
+    },
+    {
+      id: 'PRIVILEGED_TOOL_ESCALATION',
+      name: 'LLM Privilege Escalation Choke Point',
+      desc: 'Simulates an AI agent attempting to autonomously invoke Tier 4 payment capture tools without customer presence.'
     }
   ];
 
