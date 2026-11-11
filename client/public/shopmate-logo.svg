@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#246BFD;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#7657FF;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="90" height="90" x="5" y="5" rx="22" fill="#0B1020" stroke="url(#grad1)" stroke-width="3"/>
+  <!-- Shopping Bag / Shield Fusion -->
+  <path d="M 32 38 C 32 26 40 18 50 18 C 60 18 68 26 68 38" fill="none" stroke="#246BFD" stroke-width="4.5" stroke-linecap="round"/>
+  <path d="M 28 38 L 72 38 L 68 76 C 68 81 60 84 50 84 C 40 84 32 81 32 76 Z" fill="url(#grad1)" opacity="0.9"/>
+  <!-- AEGIS Shield / Checkmark Core -->
+  <path d="M 42 58 L 48 64 L 60 50" fill="none" stroke="#FFFFFF" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+

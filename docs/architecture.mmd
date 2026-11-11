@@ -1,0 +1,58 @@
+flowchart TD
+    subgraph UX ["Layer 4: Customer Experience"]
+        UI["React + Vite + Tailwind UI"]
+        Chat["AI Shopping Workspace"]
+        Missions["Mission Bundle Optimizer"]
+        PassportUI["Purchase Passport View"]
+        SecUI["AEGIS Security Center"]
+        OrdersUI["Orders & Resolve Agent"]
+    end
+
+    subgraph Intelligence ["Layer 1: BUYWISE Intelligence"]
+        IntentAgent["Intent Agent"]
+        DiscService["Deterministic Discovery Engine"]
+        BundleOpt["Deterministic Knapsack Solver"]
+        FitCheck["Rule-Based FitCheck"]
+        FairPrice["FairPrice & Trust Evaluator"]
+        ResolveAgent["Resolve Return & Warranty Agent"]
+    end
+
+    subgraph AEGIS ["Layer 2: PAYPAL AEGIS Engine"]
+        InputScanner["AEGIS Input Scanner (Injection Defense)"]
+        ToolGateway["AEGIS Tool Gateway"]
+        SpendingGuard["Spending Guard & Budget Enforcer"]
+        RiskEngine["Heuristic Risk & Trust Engine"]
+        MandateService["HMAC-SHA256 Mandate Generator"]
+        KillSwitch["Emergency Kill Switch"]
+        Ledger["Immutable Security & Agent Ledger"]
+    end
+
+    subgraph Commerce ["Layer 3: Commerce & Payments"]
+        Cart["Server-Authoritative Cart Service"]
+        Passport["Purchase Passport Generator"]
+        PayPalClient["PayPal Orders v2 REST API Client"]
+        Orders["Order & Warranty Ledger"]
+    end
+
+    Chat --> InputScanner
+    InputScanner --> IntentAgent
+    IntentAgent --> DiscService
+    Missions --> BundleOpt
+    BundleOpt --> FitCheck
+    DiscService --> FairPrice
+
+    Cart --> SpendingGuard
+    Cart --> ToolGateway
+    PassportUI --> Passport
+    Passport --> RiskEngine
+    Passport --> MandateService
+
+    MandateService --> PayPalClient
+    PayPalClient -->|idempotencyKey| PayPalAPI["PayPal Sandbox Orders v2 API"]
+    PayPalAPI -->|Capture| Orders
+    Orders --> OrdersUI
+    OrdersUI --> ResolveAgent
+    KillSwitch --> SpendingGuard
+    SpendingGuard --> Ledger
+    InputScanner --> Ledger
+
